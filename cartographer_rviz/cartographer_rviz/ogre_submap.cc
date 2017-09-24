@@ -22,7 +22,9 @@
 #include "OgreGpuProgramParams.h"
 #include "OgreImage.h"
 #include "cartographer/common/port.h"
-
+#include "OgreMaterialManager.h"
+#include "OgreTechnique.h"
+#include "OgreTextureManager.h"
 namespace cartographer_rviz {
 
 namespace {
@@ -57,8 +59,8 @@ OgreSubmap::OgreSubmap(const ::cartographer::mapping::SubmapId& id,
       slice_node_(submap_node_->createChildSceneNode()),
       manual_object_(scene_manager_->createManualObject(
           kManualObjectPrefix + GetSubmapIdentifier(id))) {
-  material_ = Ogre::MaterialManager::getSingleton().getByName(
-      kSubmapSourceMaterialName);
+
+  material_ = Ogre::MaterialManager::getSingleton().getByName(kSubmapSourceMaterialName);
   material_ =
       material_->clone(kSubmapMaterialPrefix + GetSubmapIdentifier(id_));
   material_->setReceiveShadows(false);
@@ -70,6 +72,7 @@ OgreSubmap::OgreSubmap(const ::cartographer::mapping::SubmapId& id,
 }
 
 OgreSubmap::~OgreSubmap() {
+  
   Ogre::MaterialManager::getSingleton().remove(material_->getHandle());
   if (!texture_.isNull()) {
     Ogre::TextureManager::getSingleton().remove(texture_->getHandle());
@@ -137,6 +140,7 @@ void OgreSubmap::Update(
 }
 
 void OgreSubmap::SetAlpha(const float alpha) {
+  
   const Ogre::GpuProgramParametersSharedPtr parameters =
       material_->getTechnique(0)->getPass(0)->getFragmentProgramParameters();
   parameters->setNamedConstant("u_alpha", alpha);

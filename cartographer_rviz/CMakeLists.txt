@@ -51,9 +51,11 @@ if(rviz_QT_VERSION VERSION_LESS "5")
   find_package(Qt4 ${rviz_QT_VERSION} EXACT REQUIRED QtCore QtGui)
   include(${QT_USE_FILE})
 else()
-  message(STATUS "Using Qt5 based on the rviz_QT_VERSION: ${rviz_QT_VERSION}")
+  message(STATUS "james :: >>>>>> Using Qt5 based on the rviz_QT_VERSION: ${rviz_QT_VERSION}")
   find_package(Qt5 ${rviz_QT_VERSION} EXACT REQUIRED Core Widgets)
+  
   set(QT_LIBRARIES Qt5::Widgets)
+  message(STATUS "james :: >>>>>> ${QT_LIBRARIES} >>>>>>>")
   include_directories(${Qt5Widgets_INCLUDE_DIRS})
 endif()
 add_definitions(-DQT_NO_KEYWORDS)
@@ -71,6 +73,8 @@ target_link_libraries(${PROJECT_NAME} PUBLIC cartographer)
 target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC
   "${EIGEN3_INCLUDE_DIR}")
 target_link_libraries(${PROJECT_NAME} PUBLIC ${EIGEN3_LIBRARIES})
+#james
+target_link_libraries(${PROJECT_NAME} PUBLIC ${QT_LIBRARIES})
 
 target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC
   "${Boost_INCLUDE_DIRS}")

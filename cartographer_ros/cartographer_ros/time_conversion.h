@@ -26,6 +26,11 @@ namespace cartographer_ros {
 
 ::cartographer::common::Time FromRos(const ::ros::Time& time);
 
+//james
+::cartographer::common::Time FromRos(uint32_t& sec, uint32_t& nsec);
+int64  NowTimestamp();
+::cartographer::common::Time TimeNow();
+::ros::Time ToRos(int64 time);
 }  // namespace cartographer_ros
 
 #endif  // CARTOGRAPHER_ROS_TIME_CONVERSION_H_

@@ -66,6 +66,7 @@ DrawableSubmap::DrawableSubmap(const ::cartographer::mapping::SubmapId& id,
                           .arg(id.submap_index)
                           .toStdString()),
       last_query_timestamp_(0) {
+    std::cout << "james:rviz DrawableSubmap **************************************" << std::endl;
   // DrawableSubmap creates and manages its visibility property object
   // (a unique_ptr is needed because the Qt parent of the visibility
   // property is the submap_category object - the BoolProperty needs
@@ -81,6 +82,7 @@ DrawableSubmap::DrawableSubmap(const ::cartographer::mapping::SubmapId& id,
   submap_id_text_node_->setPosition(ToOgre(kSubmapIdPosition));
   submap_id_text_node_->attachObject(&submap_id_text_);
   submap_node_->setVisible(visible);
+
   connect(this, SIGNAL(RequestSucceeded()), this, SLOT(UpdateSceneNode()));
 }
 

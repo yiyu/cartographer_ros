@@ -104,6 +104,8 @@ std::unique_ptr<::cartographer::sensor::ImuData> SensorBridge::ToImuData(
 void SensorBridge::HandleImuMessage(const string& sensor_id,
                                     const sensor_msgs::Imu::ConstPtr& msg) {
   std::unique_ptr<::cartographer::sensor::ImuData> imu_data = ToImuData(msg);
+  // std::cout << "james: HandleImuMessage:" << msg->header.frame_id << " stamp:" <<msg->header.stamp << " sensor_id:" << sensor_id << " linear_acceleration:" << msg->linear_acceleration << msg->angular_velocity << std::endl;
+   
   if (imu_data != nullptr) {
     trajectory_builder_->AddImuData(sensor_id, imu_data->time,
                                     imu_data->linear_acceleration,
@@ -134,6 +136,8 @@ void SensorBridge::HandlePointCloud2Message(
   for (const auto& point : pcl_point_cloud) {
     point_cloud.emplace_back(point.x, point.y, point.z);
   }
+//  std::cout << "James::SensorBridge::HandlePointCloud2::frame_id:" << msg->header.frame_id  << "height:"<<msg->height << " width:" << msg->width <<" sensor_id:"<<sensor_id << std::endl;
+ 
   HandleRangefinder(sensor_id, FromRos(msg->header.stamp), msg->header.frame_id,
                     point_cloud);
 }

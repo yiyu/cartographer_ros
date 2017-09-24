@@ -477,6 +477,7 @@ void Node::HandleImuMessage(const int trajectory_id, const string& sensor_id,
   if (imu_data_ptr != nullptr) {
     extrapolators_.at(trajectory_id).AddImuData(*imu_data_ptr);
   }
+   
   sensor_bridge_ptr->HandleImuMessage(sensor_id, msg);
 }
 
