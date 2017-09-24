@@ -77,8 +77,8 @@ public:
 
   int parsmsg(int64 time_stamp,void* base,int type,int offset,int length)
   {
-  //ROS_INFO(">james:parsmsg:time_stamp:%llu,base:%p,type:%d,offset:%d,length:%d,topic:%s<\n",time_stamp, base,type,offset,length,topic_.c_str());
   
+  //  ROS_INFO(">james:parsmsg:time_stamp:%llu,base:%p,type:%d,offset:%d,length:%d,topic:%s<\n",time_stamp, base,type,offset,length,topic_.c_str());
     int len = 0;
     time_stamp_ = time_stamp;
     base_=base;
@@ -155,18 +155,28 @@ public:
     boost::shared_ptr<sensor_msgs::Imu> msg = boost::make_shared<sensor_msgs::Imu>();
 
       std::string sensor_id = "imu";
-      cartographer::sensor::proto::ImuData imuData;
-      memcpy(&imuData,(void*)((char*)base_+offset_),length_);
-     cartographer::sensor::ImuData imu = cartographer::sensor::FromProto(imuData);
-      msg->header.stamp = ToRos(::cartographer::common::FromUniversal(time_stamp_));
+      //cartographer::sensor::proto::ImuData imuData;
+       cartographer::sensor::ImuData imuData;
+
+      memcpy((void*)&imuData,(void*)((char*)base_+offset_),length_);
+
+    //  cartographer::sensor::ImuData imu = cartographer::sensor::FromProto(imuData);
+       cartographer::common::Time time = imuData.time;
+      //Eigen::Vector3d linear_acceleration = cartographer::transform::ToEigen(imuData.linear_acceleration());
+      //Eigen::Vector3d angular_velocity = cartographer::transform::ToEigen(imuData.angular_velocity());
+      Eigen::Vector3d linear_acceleration = imuData.linear_acceleration;
+      Eigen::Vector3d angular_velocity = imuData.angular_velocity;
+      //ROS_INFO(">james:getImu:time_stamp:%llu,base:%p,type:%d,offset:%d,length:%d,topic:%s<\n",time_stamp_, base_,type_,offset_,length_,topic_.c_str());
+   //   std::cout << "james::getImu time_stamp_:"<< time_stamp_ << " time:" << time << " length_:" << length_ << " offset_:" << offset_ << " linear_acceleration:" << linear_acceleration << " angular_velocity:" << angular_velocity << std::endl;
+      //msg->header.stamp =  ToRos(::cartographer::common::FromUniversal(time_stamp_));
       msg->header.frame_id = "imu_link";
       msg->header.stamp = ToRos(time_stamp_);
-      msg->linear_acceleration.x = imu.linear_acceleration.x();
-      msg->linear_acceleration.y =imu.linear_acceleration.y();
-      msg->linear_acceleration.z =imu.linear_acceleration.z();
-      msg->angular_velocity.x = imu.angular_velocity.x();
-      msg->angular_velocity.y =imu.angular_velocity.y();
-      msg->angular_velocity.z =imu.angular_velocity.z();
+      msg->linear_acceleration.x = linear_acceleration.x();
+      msg->linear_acceleration.y =linear_acceleration.y();
+      msg->linear_acceleration.z =linear_acceleration.z();
+      msg->angular_velocity.x = angular_velocity.x();
+      msg->angular_velocity.y = angular_velocity.y();
+      msg->angular_velocity.z = angular_velocity.z();
     return msg;
   }
 };
@@ -214,12 +224,13 @@ void write_halo_file( std::fstream& output,const std::string& sensor_id, const s
 void write_halo_file( std::fstream& output, const sensor_msgs::Imu::ConstPtr& msg)
 {
    //james
+    const cartographer::common::Time time = FromRos(msg->header.stamp);
     cartographer::sensor::ImuData imu;
     //const Eigen::Vector3d& 
+    imu.time = time;
     imu.linear_acceleration =  ToEigen(msg->linear_acceleration);
     //const Eigen::Vector3d& 
     imu.angular_velocity =  ToEigen(msg->angular_velocity);
-    const cartographer::common::Time time = FromRos(msg->header.stamp);
     int64 uts_timestamp = ::cartographer::common::ToUniversal(time);
     
     std::stringstream  strImu;
@@ -236,13 +247,20 @@ void write_halo_file( std::fstream& output, const sensor_msgs::Imu::ConstPtr& ms
     strImu << imu.linear_acceleration.y() ;
     strImu << ",";
     strImu << imu.linear_acceleration.z() ;
-    cartographer::sensor::proto::ImuData protoImu = cartographer::sensor::ToProto(imu);
-    unsigned int len = sizeof(protoImu);
+    //cartographer::sensor::proto::ImuData protoImu = cartographer::sensor::ToProto(imu);
+    //Eigen::Vector3d linear_acceleration = cartographer::transform::ToEigen(protoImu.linear_acceleration());
+    //Eigen::Vector3d angular_velocity = cartographer::transform::ToEigen(protoImu.angular_velocity());
+     
+  //  unsigned int len = sizeof(protoImu);
+    unsigned int len = sizeof(imu);
+
+    //std::cout << "james::write_halo_file: len:" << len << " time:" << imu.time << " linear_acceleration:" << imu.linear_acceleration << " angular_velocity:" << imu.angular_velocity << std::endl;
     output.write((char*)&len,sizeof(unsigned int));
     output.write((char*)&uts_timestamp,sizeof(int64));
     unsigned char type = 1;  
     output.write((char*)&type,sizeof(unsigned char));
-    output.write((char*)&protoImu,len);
+    //output.write((char*)&protoImu,len);
+    output.write((char*)&imu,len);
     imu_output << strImu.str() << std::endl;
 }
 
@@ -348,7 +366,7 @@ void simulate_slam2( Node& node,const int trajectory_id,const std::string& strDa
   size_t cur = 0;
   int flength = 20480;
   
-  std::cout << "laser data size:" << cur << "file:" << nFileLen   <<std::endl;
+  std::cout << "simulate_slam2:laser data size:" << cur << "file:" << nFileLen   <<std::endl;
   int iCount = 0;
   int iImuCount = 0;
   int iMultLaserCount = 0;
@@ -393,15 +411,13 @@ void simulate_slam2( Node& node,const int trajectory_id,const std::string& strDa
          // ::ros::Time time = delayed_msg.getTime();
     
         if (delayed_msg.isType() == 4) {
-          //   std::cout << ">james:poitcloud::iCount:"<< iCount << " timestamp:"  <<  delayed_msg.getTime() << " in64_time:"<< delayed_msg.time_stamp_ << " topic:" << topic <<" delayed_msg.getTopic:" << delayed_msg.getTopic() << std::endl;
-         
-              node.HandlePointCloud2Message(trajectory_id, topic,delayed_msg.getPointCloud2());
+        //    std::cout << ">james:poitcloud::iCount:"<< iCount << " timestamp:"  <<  delayed_msg.getTime() << " in64_time:"<< delayed_msg.time_stamp_ << " topic:" << topic <<" delayed_msg.getTopic:" << delayed_msg.getTopic() << std::endl;
+            node.HandlePointCloud2Message(trajectory_id, topic,delayed_msg.getPointCloud2());
         }
         if (delayed_msg.isType() == 1) {
-         
-//          std::cout << ">james:         Imu::iCount:"<< iCount << " timestamp:"  <<  delayed_msg.getTime() << " in64_time:"<< delayed_msg.time_stamp_ << " topic:" << topic <<" delayed_msg.getTopic:" << delayed_msg.getTopic() << std::endl;
+        //  std::cout << ">james:         Imu::iCount:"<< iCount << " timestamp:"  <<  delayed_msg.getTime() << " in64_time:"<< delayed_msg.time_stamp_ << " topic:" << topic <<" delayed_msg.getTopic:" << delayed_msg.getTopic() << std::endl;
          // node.halo_imu_link_publisher_.publish(delayed_msg.getImu());
-          node.HandleImuMessage(trajectory_id, topic,delayed_msg.getImu());         
+            node.HandleImuMessage(trajectory_id, topic,delayed_msg.getImu());         
         }
         delayed_messages.pop_front();
     }

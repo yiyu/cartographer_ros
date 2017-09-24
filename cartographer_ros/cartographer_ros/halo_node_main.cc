@@ -208,7 +208,7 @@ void Run(const std::string& bag_filenames) {
          
                  const cartographer::common::Time time = FromRos(point_cloud_msg->header.stamp);
                   int64 uts_timestamp = ::cartographer::common::ToUniversal(time);
-                  std::cout << ">james:poitcloud::" << " timestamp:"  <<  point_cloud_msg->header.stamp << " in64_time:"<< uts_timestamp << " topic:" << topic <<" delayed_msg.getTopic:" << delayed_msg.getTopic() << std::endl;
+                 // std::cout << ">james:poitcloud::" << " timestamp:"  <<  point_cloud_msg->header.stamp << " in64_time:"<< uts_timestamp << " topic:" << topic <<" delayed_msg.getTopic:" << delayed_msg.getTopic() << std::endl;
                   write_halo_file(output,delayed_msg.getTopic(),point_cloud_msg);
                   //LOG_EVERY_N(INFO, 1) << ">james:PointCloud2::iCount:"<< iCount << " timestamp:"  <<  point_cloud_msg->header.stamp <<" topic:" << topic <<" delayed_msg.getTopic:" << delayed_msg.getTopic();
                   //ROS_INFO(">james:PointCloud2::topic:%s,delayed_msg.getTopic:%s<\n",topic.c_str(), delayed_msg.getTopic().c_str());
@@ -226,7 +226,7 @@ void Run(const std::string& bag_filenames) {
                write_halo_file(output,imu_msg);
                const cartographer::common::Time time = FromRos(imu_msg->header.stamp);
                int64 uts_timestamp = ::cartographer::common::ToUniversal(time);
-  //            std::cout << ">james:         Imu::iCount:"<< iCount << " timestamp:"  <<  imu_msg->header.stamp << " in64_time:"<< uts_timestamp << " topic:" << topic <<" delayed_msg.getTopic:" << delayed_msg.getTopic() << std::endl;
+               std::cout << ">james:         Imu::" << " timestamp:"  <<  imu_msg->header.stamp << " in64_time:"<< uts_timestamp << " topic:" << topic <<" delayed_msg.getTopic:" << delayed_msg.getTopic() << std::endl;
             }
             node.HandleImuMessage(trajectory_id, topic,
                                   delayed_msg.instantiate<sensor_msgs::Imu>());

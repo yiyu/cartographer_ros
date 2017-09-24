@@ -104,7 +104,7 @@ std::unique_ptr<::cartographer::sensor::ImuData> SensorBridge::ToImuData(
 void SensorBridge::HandleImuMessage(const string& sensor_id,
                                     const sensor_msgs::Imu::ConstPtr& msg) {
   std::unique_ptr<::cartographer::sensor::ImuData> imu_data = ToImuData(msg);
-  // std::cout << "james: HandleImuMessage:" << msg->header.frame_id << " stamp:" <<msg->header.stamp << " sensor_id:" << sensor_id << " linear_acceleration:" << msg->linear_acceleration << msg->angular_velocity << std::endl;
+//  std::cout << "james: HandleImuMessage:" << msg->header.frame_id << " stamp:" <<msg->header.stamp << " sensor_id:" << sensor_id << " linear_acceleration:" << msg->linear_acceleration << msg->angular_velocity << std::endl;
    
   if (imu_data != nullptr) {
     trajectory_builder_->AddImuData(sensor_id, imu_data->time,
