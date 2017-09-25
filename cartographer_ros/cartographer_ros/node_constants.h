@@ -42,6 +42,11 @@ constexpr double kConstraintPublishPeriodSec = 0.5;
 constexpr int kInfiniteSubscriberQueueSize = 0;
 constexpr int kLatestOnlyPublisherQueueSize = 1;
 
+//james
+constexpr char kTrajectoryHaloNodesListTopic[] = "trajectory_halo_nodes_list";
+constexpr char kHaloImuListTopic[] = "halo_imu_list";
+constexpr char kHaloPoseListTopic[] = "halo_pose_list";
+
 // For multiple topics adds numbers to the topic name and returns the list.
 std::vector<std::string> ComputeRepeatedTopicNames(const std::string& topic,
                                                    int num_topics);

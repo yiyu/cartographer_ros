@@ -92,6 +92,16 @@ Node::Node(const NodeOptions& node_options, tf2_ros::Buffer* const tf_buffer)
   constraint_list_publisher_ =
       node_handle_.advertise<::visualization_msgs::MarkerArray>(
           kConstraintListTopic, kLatestOnlyPublisherQueueSize);
+
+//james 
+  trajectory_halo_imu_list_publisher_ = node_handle_.advertise<::visualization_msgs::MarkerArray>(
+          kTrajectoryHaloNodesListTopic, kLatestOnlyPublisherQueueSize);
+  //halo_imu_link_publisher_ = node_handle_.advertise<sensor_msgs::Imu>("/imu", 1000);
+  halo_pose_list_publisher_ = node_handle_.advertise<::geometry_msgs::PoseArray>(
+          kHaloPoseListTopic, kLatestOnlyPublisherQueueSize);
+  halo_imu_list_publisher_= node_handle_.advertise<::geometry_msgs::PoseArray>(
+          kHaloImuListTopic, kLatestOnlyPublisherQueueSize);
+//
   service_servers_.push_back(node_handle_.advertiseService(
       kSubmapQueryServiceName, &Node::HandleSubmapQuery, this));
   service_servers_.push_back(node_handle_.advertiseService(
@@ -221,6 +231,20 @@ void Node::PublishTrajectoryNodeList(
   if (trajectory_node_list_publisher_.getNumSubscribers() > 0) {
     trajectory_node_list_publisher_.publish(
         map_builder_bridge_.GetTrajectoryNodeList());
+  }
+
+   //james test
+  if (trajectory_halo_imu_list_publisher_.getNumSubscribers() > 0) {
+   // LOG(INFO) <<"james::Node::PublishTrajectoryNodesList-------------------------------" ; 
+    trajectory_halo_imu_list_publisher_.publish(map_builder_bridge_.GetHaloTrajectoryNodesList());  
+  }
+
+if (halo_imu_list_publisher_.getNumSubscribers() > 0) {
+    halo_imu_list_publisher_.publish(map_builder_bridge_.GetHaloImuList());  
+  }
+
+if (halo_pose_list_publisher_.getNumSubscribers() > 0) {
+    halo_pose_list_publisher_.publish(map_builder_bridge_.GetHaloPoseList());  
   }
 }
 

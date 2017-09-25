@@ -33,6 +33,7 @@
 #include "cartographer_ros_msgs/SubmapQuery.h"
 #include "nav_msgs/OccupancyGrid.h"
 #include "visualization_msgs/MarkerArray.h"
+#include "geometry_msgs/PoseArray.h"
 
 namespace cartographer_ros {
 
@@ -67,7 +68,11 @@ class MapBuilderBridge {
   visualization_msgs::MarkerArray GetConstraintList();
 
   SensorBridge* sensor_bridge(int trajectory_id);
-
+  //james test 
+  visualization_msgs::MarkerArray GetHaloTrajectoryNodesList();
+  geometry_msgs::PoseArray GetHaloPoseList();
+  geometry_msgs::PoseArray GetHaloImuList();
+  ///
  private:
   const NodeOptions node_options_;
   cartographer::mapping::MapBuilder map_builder_;

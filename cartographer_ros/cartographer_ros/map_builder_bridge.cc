@@ -314,4 +314,89 @@ SensorBridge* MapBuilderBridge::sensor_bridge(const int trajectory_id) {
   return sensor_bridges_.at(trajectory_id).get();
 }
 
+//james ........
+visualization_msgs::MarkerArray MapBuilderBridge::GetHaloTrajectoryNodesList() {
+  visualization_msgs::MarkerArray trajectory_nodes_list;
+   cartographer::mapping::TrajectoryBuilder*  trajectory_builder = map_builder_.GetTrajectoryBuilder(0);
+  auto trajectory_nodes = trajectory_builder->GetHaloTrajectoryNodes();
+  int marker_id = 0;
+  //std::cout <<  "<<<james::MapBuilderBridge::GetHaloTrajectoryNodesList:>>>trajectory_nodes size:";
+    visualization_msgs::Marker marker;
+    marker.id = marker_id++;
+    marker.type = visualization_msgs::Marker::LINE_STRIP;
+    marker.header.stamp = ::ros::Time::now();
+    marker.header.frame_id = node_options_.map_frame;
+    marker.color.b = 1.0;
+    marker.color.r = 1.0;
+    marker.color.a = 1.0;
+    marker.scale.x = kTrajectoryLineStripMarkerScale;
+    marker.pose.orientation.w = 1.0;
+    for (const auto& node : trajectory_nodes) {
+      marker.points.push_back(ToGeometryMsgPoint(
+          (node * cartographer::transform::Rigid3d::Identity()).translation()));
+     // std::cout << " pose:"<<  node.pose  << " tracking_to_pose:"<< node.constant_data->tracking_to_pose;
+    }
+    trajectory_nodes_list.markers.push_back(marker);
+  
+ /* LOG(INFO) <<  " trajectory_nodes size:" << trajectory_nodes.size() << 
+                " trajectory_nodes_list:"<< trajectory_nodes_list.markers.size() <<
+                " points.size:" << trajectory_nodes_list.markers[0].points.size() << std::endl ;
+ */
+  return trajectory_nodes_list;
+}
+
+::geometry_msgs::PoseArray MapBuilderBridge::GetHaloPoseList() 
+{
+  ::geometry_msgs::PoseArray halo_pose_list;
+  cartographer::mapping::TrajectoryBuilder*  trajectory_builder = map_builder_.GetTrajectoryBuilder(0);
+  auto trajectory_nodes = trajectory_builder->GetHaloTrajectoryNodes();
+  int marker_id = 0; 
+  halo_pose_list.header.seq = marker_id++;
+  halo_pose_list.header.stamp =  ::ros::Time::now();
+  halo_pose_list.header.frame_id = node_options_.map_frame;
+  for (const auto& node : trajectory_nodes) {
+   // marker.points.push_back(ToGeometryMsgPoint(
+    //    (node * cartographer::transform::Rigid3d::Identity()).translation()));
+      geometry_msgs::Pose pose;
+      pose.position = ToGeometryMsgPoint(node.translation());
+      pose.orientation.w = node.rotation().w();
+      pose.orientation.x = node.rotation().x();
+      pose.orientation.y = node.rotation().y();
+      pose.orientation.z = node.rotation().z();
+      halo_pose_list.poses.push_back(pose);
+  }
+   
+  
+ /* LOG(INFO) <<  " trajectory_nodes size:" << trajectory_nodes.size() << 
+                " trajectory_nodes_list:"<< trajectory_nodes_list.markers.size() <<
+                " points.size:" << trajectory_nodes_list.markers[0].points.size() << std::endl ;
+ */
+  return halo_pose_list;
+}
+
+::geometry_msgs::PoseArray MapBuilderBridge::GetHaloImuList() 
+{
+  ::geometry_msgs::PoseArray halo_pose_list;
+  cartographer::mapping::TrajectoryBuilder*  trajectory_builder = map_builder_.GetTrajectoryBuilder(0);
+  auto trajectory_nodes = map_builder_.sparse_pose_graph()->GetTrajectoryNodes();
+  int marker_id = 0; 
+  halo_pose_list.header.seq = marker_id++;
+  halo_pose_list.header.stamp =  ::ros::Time::now();
+  halo_pose_list.header.frame_id = node_options_.map_frame;
+
+  for (const auto& single_trajectory : trajectory_nodes) {
+    for (const auto& node : single_trajectory) {
+      ::cartographer::transform::Rigid3d rigid3d = node.pose;// (node.pose * node.constant_data->tracking_to_pose);
+      geometry_msgs::Pose pose;
+      pose.position = ToGeometryMsgPoint(rigid3d.translation());
+      pose.orientation.w = rigid3d.rotation().w();
+      pose.orientation.x = rigid3d.rotation().x();
+      pose.orientation.y = rigid3d.rotation().y();
+      pose.orientation.z = rigid3d.rotation().z();
+      halo_pose_list.poses.push_back(pose);
+    }
+  }
+  return halo_pose_list;
+}
+//////
 }  // namespace cartographer_ros

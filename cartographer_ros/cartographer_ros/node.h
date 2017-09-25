@@ -134,6 +134,13 @@ class Node {
   ::ros::Publisher submap_list_publisher_;
   ::ros::Publisher trajectory_node_list_publisher_;
   ::ros::Publisher constraint_list_publisher_;
+  //james imu test 
+  ::ros::Publisher trajectory_halo_imu_list_publisher_;
+public:
+  ::ros::Publisher halo_pose_list_publisher_;
+  ::ros::Publisher halo_imu_list_publisher_;
+ private:
+////////////
   // These ros::ServiceServers need to live for the lifetime of the node.
   std::vector<::ros::ServiceServer> service_servers_;
   ::ros::Publisher scan_matched_point_cloud_publisher_;
