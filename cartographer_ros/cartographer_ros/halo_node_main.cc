@@ -95,6 +95,7 @@ void Run(const std::string& bag_filenames) {
   for (const string& topic : node.ComputeDefaultTopics(trajectory_options)) {
     CHECK(expected_sensor_ids.insert(node.node_handle()->resolveName(topic))
               .second);
+     ROS_INFO("expected_sensor_ids:,topic:%s , sensor_id:%s\n",topic.c_str(),node.node_handle()->resolveName(topic).c_str());
   }
 
   ::ros::Publisher tf_publisher =

@@ -78,7 +78,7 @@ public:
   int parsmsg(int64 time_stamp,void* base,int type,int offset,int length)
   {
   
-  //  ROS_INFO(">james:parsmsg:time_stamp:%llu,base:%p,type:%d,offset:%d,length:%d,topic:%s<\n",time_stamp, base,type,offset,length,topic_.c_str());
+    //ROS_INFO(">james:parsmsg:time_stamp:%llu,base:%p,type:%d,offset:%d,length:%d,topic:%s<\n",time_stamp, base,type,offset,length,topic_.c_str());
     int len = 0;
     time_stamp_ = time_stamp;
     base_=base;
@@ -92,7 +92,9 @@ public:
       len = length;
     }else if(type == 2)
     {
-      std::cout << "ERROR: not support message type=2";
+      ROS_ERROR(">james:parsmsg:time_stamp:%llu,base:%p,type:%d,offset:%d,length:%d,topic:%s<\n",time_stamp, base,type,offset,length,topic_.c_str());
+    
+      std::cout << "ERROR: not support message type=2" << std::endl;
 
     }else if(type == 4)
     {
@@ -166,8 +168,10 @@ public:
       //Eigen::Vector3d angular_velocity = cartographer::transform::ToEigen(imuData.angular_velocity());
       Eigen::Vector3d linear_acceleration = imuData.linear_acceleration;
       Eigen::Vector3d angular_velocity = imuData.angular_velocity;
+
       //ROS_INFO(">james:getImu:time_stamp:%llu,base:%p,type:%d,offset:%d,length:%d,topic:%s<\n",time_stamp_, base_,type_,offset_,length_,topic_.c_str());
-   //   std::cout << "james::getImu time_stamp_:"<< time_stamp_ << " time:" << time << " length_:" << length_ << " offset_:" << offset_ << " linear_acceleration:" << linear_acceleration << " angular_velocity:" << angular_velocity << std::endl;
+      ::cartographer::transform::Rigid3d rigid_imu(linear_acceleration,cartographer::transform::AngleAxisVectorToRotationQuaternion(angular_velocity));
+     // std::cout << "james::getImu time_stamp_:"<< time_stamp_ << " time:" << time << " length_:" << length_ << " offset_:" << offset_ << " imu:" << rigid_imu << std::endl;
       //msg->header.stamp =  ToRos(::cartographer::common::FromUniversal(time_stamp_));
       msg->header.frame_id = "imu_link";
       msg->header.stamp = ToRos(time_stamp_);
@@ -411,11 +415,11 @@ void simulate_slam2( Node& node,const int trajectory_id,const std::string& strDa
          // ::ros::Time time = delayed_msg.getTime();
     
         if (delayed_msg.isType() == 4) {
-        //    std::cout << ">james:poitcloud::iCount:"<< iCount << " timestamp:"  <<  delayed_msg.getTime() << " in64_time:"<< delayed_msg.time_stamp_ << " topic:" << topic <<" delayed_msg.getTopic:" << delayed_msg.getTopic() << std::endl;
+            std::cout << ">james:poitcloud::iCount:"<< iCount << " timestamp:"  <<  delayed_msg.getTime() << " in64_time:"<< delayed_msg.time_stamp_ << " topic:" << topic <<" delayed_msg.getTopic:" << delayed_msg.getTopic() << std::endl;
             node.HandlePointCloud2Message(trajectory_id, topic,delayed_msg.getPointCloud2());
         }
         if (delayed_msg.isType() == 1) {
-        //  std::cout << ">james:         Imu::iCount:"<< iCount << " timestamp:"  <<  delayed_msg.getTime() << " in64_time:"<< delayed_msg.time_stamp_ << " topic:" << topic <<" delayed_msg.getTopic:" << delayed_msg.getTopic() << std::endl;
+      //    std::cout << ">james:         Imu::iCount:"<< iCount << " timestamp:"  <<  delayed_msg.getTime() << " in64_time:"<< delayed_msg.time_stamp_ << " topic:" << topic <<" delayed_msg.getTopic:" << delayed_msg.getTopic() << std::endl;
          // node.halo_imu_link_publisher_.publish(delayed_msg.getImu());
             node.HandleImuMessage(trajectory_id, topic,delayed_msg.getImu());         
         }
@@ -432,7 +436,7 @@ void simulate_slam2( Node& node,const int trajectory_id,const std::string& strDa
         continue;
     }
      //LOG_EVERY_N(INFO, 1000)<< "**[iCount] " << iCount << " sensor_id:" <<  msg.getTopic() << " topic:" << topic << "  expected_sensor_ids size:" << expected_sensor_ids.size() << "time_stamp:" << time_stamp << " begin_time:" << begin_time<<std::endl;
-    
+   // usleep(5000);
     delayed_messages.push_back(msg);
     //std::cout << "james >>>>>>>>>>>> Total:" << iCount << " ImuCout:" << iImuCount << " MultiLaserCount:" << iMultLaserCount << " PointCloudCount:" << iPointCloudCount << " delay:" << new_t - start << " duration:"<< CLOCKS_PER_SEC*60 <<std::endl;
 

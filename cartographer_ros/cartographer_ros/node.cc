@@ -496,7 +496,7 @@ void Node::HandleOdometryMessage(const int trajectory_id,
 void Node::HandleImuMessage(const int trajectory_id, const string& sensor_id,
                             const sensor_msgs::Imu::ConstPtr& msg) 
 {
- // LOG(INFO) << "james::HandleImuMessage Trajectory_id " << trajectory_id << " sensor_id:" << msg->header.frame_id << std::endl;
+//  LOG(INFO) << "james::HandleImuMessage Trajectory_id " << trajectory_id << " sensor_id:" << msg->header.frame_id << std::endl;
   carto::common::MutexLocker lock(&mutex_);
   auto sensor_bridge_ptr = map_builder_bridge_.sensor_bridge(trajectory_id);
   auto imu_data_ptr = sensor_bridge_ptr->ToImuData(msg);
