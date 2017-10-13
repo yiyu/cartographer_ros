@@ -54,10 +54,8 @@ class InstantMsg
 {
 public:
   int64 time_stamp_;
-  //void*  base_;
   std::ifstream* inifile_;
   int type_;
-  int offset_;
   int length_;
   //std::string frame_id;
   std::string topic_;
@@ -79,16 +77,14 @@ public:
   }
 
 
-  int parsmsg(int64 time_stamp,std::ifstream* inifile,int type,int offset,int length)
+  int parsmsg(int64 time_stamp,std::ifstream* inifile,int type,int length)
   {
   
-    ROS_INFO(">james:parsmsg:time_stamp:%llu,type:%d,offset:%d,length:%d,topic:%s<\n",time_stamp,type,offset,length,topic_.c_str());
+    ROS_INFO(">james:parsmsg:time_stamp:%llu,type:%d,length:%d,topic:%s<\n",time_stamp,type,length,topic_.c_str());
     int len = 0;
     time_stamp_ = time_stamp;
-    //base_=inifile;
     inifile_=inifile;
     type_=type;
-    offset_=offset;
     length_ = length;
        
     if(type == 1)
@@ -101,30 +97,18 @@ public:
     }else if(type == 2)
     {
      // ROS_ERROR(">james:parsmsg:time_stamp:%llu,base:%p,type:%d,offset:%d,length:%d,topic:%s<\n",time_stamp, base,type,offset,length,topic_.c_str());
-    
       std::cout << "ERROR: not support message type=2" << std::endl;
 
     }else if(type == 4)
     {
 
-      len = length;
       unsigned char strLen = 0;
       inifile->read((char*)&strLen,sizeof(unsigned char));
-     // memcpy(&strLen,(void*)((char*)base_+offset),sizeof(unsigned char));
-      offset +=sizeof(unsigned char);
-      len += sizeof(unsigned char);
       char cSensor_id[256] ={0};
       inifile->read((char*)cSensor_id,strLen);
-      //memcpy(cSensor_id,(void*)((char*)base_+offset),strLen);
-      offset += (int)strLen ;
-      len += (int)strLen;
-      
-      inifile->read((char*)&sensor_to_tracking_,sizeof(::cartographer::transform::Rigid3d));
-      //memcpy(&sensor_to_tracking,(void*)((char*)base_+offset),sizeof(::cartographer::transform::Rigid3d));
-      offset += sizeof(::cartographer::transform::Rigid3d);
-      len += sizeof(::cartographer::transform::Rigid3d);
       std::string sensor_id = cSensor_id;
       topic_ = cSensor_id;
+      inifile->read((char*)&sensor_to_tracking_,sizeof(::cartographer::transform::Rigid3d));
       cartographer::sensor::proto::CompressedPointCloud pts;
       char* pData = new char[length_];
       inifile_->read((char*)pData,length_);
@@ -145,37 +129,18 @@ public:
    
      boost::shared_ptr<sensor_msgs::PointCloud2> msg = boost::make_shared<sensor_msgs::PointCloud2>();
       unsigned char strLen = 0;
-      int offset = offset_;
-      //inifile_->read((char*)&strLen,sizeof(unsigned char));
-    //  memcpy(&strLen,(void*)((char*)base_+offset),sizeof(unsigned char));
-      offset +=sizeof(unsigned char);
-      char cSensor_id[256] ={0};
-      //inifile_->read((char*)cSensor_id,strLen);
-     // memcpy(cSensor_id,(void*)((char*)base_+offset),strLen);
-      offset += (int)strLen ;
-     
-      ::cartographer::transform::Rigid3d sensor_to_tracking;
-      //inifile_->read((char*)&sensor_to_tracking,sizeof(::cartographer::transform::Rigid3d));
-      //memcpy(&sensor_to_tracking,(void*)((char*)base_+offset),sizeof(::cartographer::transform::Rigid3d));
-      offset += sizeof(::cartographer::transform::Rigid3d);
-      //cartographer::sensor::proto::CompressedPointCloud pts;
-      //char* pData = new char[length_];
-      //inifile_->read((char*)pData,length_);
-     
-      //pts.ParseFromArray(pData,length_);
-      //cartographer::sensor::PointCloud ranges = cartographer::sensor::CompressedPointCloud(pts).Decompress();
+      char cSensor_id[256] ={0}; 
       std::string frame_id ="" ;
       std::string sensor_id = cSensor_id;
    
-        if(topic_ == "horizontal_laser_3d" || topic_ == "points2_1")
+      if(topic_ == "horizontal_laser_3d" || topic_ == "points2_1")
           frame_id = "horizontal_vlp16_link";
-        else if( sensor_id == "vertical_laser_3d" || topic_ == "points2_2")
+      else if( sensor_id == "vertical_laser_3d" || topic_ == "points2_2")
           frame_id="vertical_vlp16_link";
       
        std::cout << ">>>>>cSensor_id:[" << topic_ << "]sensor_to_tracking["<< sensor_to_tracking_<<"]length_[" << length_<<"]"<< std::endl;
 
       *msg = cartographer_ros::ToPointCloud2Message(time_stamp_,frame_id,ranges_);
-      //delete[] pData;
     return msg;
   }
 
@@ -184,22 +149,13 @@ public:
     boost::shared_ptr<sensor_msgs::Imu> msg = boost::make_shared<sensor_msgs::Imu>();
 
       std::string sensor_id = "imu";
-      //cartographer::sensor::proto::ImuData imuData;
-      //cartographer::sensor::ImuData imuData;
-      //inifile_->read((char*)&imuData,length_);
-      //memcpy((void*)&imuData,(void*)((char*)base_+offset_),length_);
-
-    //  cartographer::sensor::ImuData imu = cartographer::sensor::FromProto(imuData);
-       cartographer::common::Time time = imuData_.time;
-      //Eigen::Vector3d linear_acceleration = cartographer::transform::ToEigen(imuData.linear_acceleration());
-      //Eigen::Vector3d angular_velocity = cartographer::transform::ToEigen(imuData.angular_velocity());
+      cartographer::common::Time time = imuData_.time;
       Eigen::Vector3d linear_acceleration = imuData_.linear_acceleration;
       Eigen::Vector3d angular_velocity = imuData_.angular_velocity;
 
       //ROS_INFO(">james:getImu:time_stamp:%llu,base:%p,type:%d,offset:%d,length:%d,topic:%s<\n",time_stamp_, base_,type_,offset_,length_,topic_.c_str());
       ::cartographer::transform::Rigid3d rigid_imu(linear_acceleration,cartographer::transform::AngleAxisVectorToRotationQuaternion(angular_velocity));
      // std::cout << "james::getImu time_stamp_:"<< time_stamp_ << " time:" << time << " length_:" << length_ << " offset_:" << offset_ << " imu:" << rigid_imu << std::endl;
-      //msg->header.stamp =  ToRos(::cartographer::common::FromUniversal(time_stamp_));
       msg->header.frame_id = "imu_link";
       msg->header.stamp = ToRos(time_stamp_);
       //james imu test
@@ -392,16 +348,6 @@ void simulate_slam2( Node& node,const int trajectory_id,const std::string& strDa
   if( !inifile.is_open() )
         throw std::domain_error( "Unable to load input file: " + strData );
     
- /* void *mapped_mem;
-  void* start_addr = 0;
-  
-  FILE* fd = fopen(strData.c_str(), "rb");
-  fseek(fd,0,SEEK_END);
-  int nFileLen= ftell(fd);
-  int sharedFileName = fileno(fd);
-  mapped_mem= (char*)mmap(start_addr, nFileLen, PROT_READ,MAP_PRIVATE,sharedFileName,0);
-  */
-  size_t cur = 0;
   int flength = 20480;
   
   int iCount = 0;
@@ -421,26 +367,17 @@ void simulate_slam2( Node& node,const int trajectory_id,const std::string& strDa
   while(!inifile.eof())//cur  <= nFileLen && iCount < 100000)//&& new_t -start <= FLAGS_duration*CLOCKS_PER_SEC*60)//&& iMultLaserCount < 199 && iPointCloudCount <199  )
   {
     new_t = clock();
-    unsigned int flength = 0;//*(unsigned int*)((char*)mapped_mem+cur);
+    unsigned int flength = 0;
     inifile.read((char*)&flength,sizeof(unsigned int));
-  //  std::cout << "====================== read file end =====================flength::"<< flength << std::endl;
-    cur += sizeof(unsigned int);
-    int64 time_stamp = 0;// *(int64*)((char*)mapped_mem+cur);
+   
+    int64 time_stamp = 0;
     inifile.read((char*)&time_stamp,sizeof(int64));
     
-    cur += sizeof(int64);
-    unsigned char type = 0;//*(unsigned char*)((char*)mapped_mem+cur);
+    unsigned char type = 0;
     inifile.read((char*)&type,sizeof(unsigned char));
-    cur += sizeof(unsigned char);
-    /*
-    if(cur + flength >= nFileLen )
-    {
-        std::cout << "====================== read file end =====================" << std::endl;
-        break;
-    }*/
-
+    
     InstantMsg msg;
-    int msg_len = msg.parsmsg(time_stamp,&inifile,type,cur,flength);
+    int msg_len = msg.parsmsg(time_stamp,&inifile,type,flength);
     if(iCount == 0)
        begin_time = msg.getTime();
      iCount++;
@@ -473,8 +410,6 @@ void simulate_slam2( Node& node,const int trajectory_id,const std::string& strDa
         delayed_messages.pop_front();
     }
 
-    cur += msg_len;
-  
     string topic ;
    topic = node.node_handle()->resolveName(msg.getTopic());//, false /* resolve */);
     //topic = node.node_handle()->resolveName(msg.getTopic(), false /* resolve */);
@@ -499,9 +434,7 @@ void simulate_slam2( Node& node,const int trajectory_id,const std::string& strDa
   }
 
   std::cout << " ******************Total:" << iCount << " ImuCout:" << iImuCount << " MultiLaserCount:" << iMultLaserCount << " PointCloudCount:" << iPointCloudCount  << " duration:" << new_t - start << std::endl;
-  //fclose(fd);
-  //munmap(mapped_mem, nFileLen);
-inifile.close();
+  inifile.close();
   node.FinishAllTrajectories();
 }
 
