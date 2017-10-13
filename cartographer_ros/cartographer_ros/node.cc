@@ -101,6 +101,9 @@ Node::Node(const NodeOptions& node_options, tf2_ros::Buffer* const tf_buffer)
           kHaloPoseListTopic, kLatestOnlyPublisherQueueSize);
   halo_imu_list_publisher_= node_handle_.advertise<::geometry_msgs::PoseArray>(
           kHaloImuListTopic, kLatestOnlyPublisherQueueSize);
+  halo_point_cloud_publisher_ = node_handle_.advertise<sensor_msgs::PointCloud2>(
+          kHaloPointCloudTopic, kLatestOnlyPublisherQueueSize);
+
 //
   service_servers_.push_back(node_handle_.advertiseService(
       kSubmapQueryServiceName, &Node::HandleSubmapQuery, this));
@@ -454,7 +457,9 @@ bool Node::HandleWriteState(
 void Node::FinishAllTrajectories() {
   carto::common::MutexLocker lock(&mutex_);
   for (auto& entry : is_active_trajectory_) {
+
     const int trajectory_id = entry.first;
+    LOG(INFO) << "FinishAllTrajectories: [" << trajectory_id << "][" << entry.second << "]" << std::endl;
     if (entry.second) {
       map_builder_bridge_.FinishTrajectory(trajectory_id);
       entry.second = false;
@@ -473,6 +478,8 @@ void Node::RunFinalOptimization() {
   {
     carto::common::MutexLocker lock(&mutex_);
     for (const auto& entry : is_active_trajectory_) {
+       LOG(INFO) << "FinishAllTrajectories: [" << entry.first << "][" << entry.second << "]" << std::endl;
+   
       CHECK(!entry.second);
     }
   }
@@ -529,6 +536,15 @@ void Node::HandlePointCloud2Message(
   carto::common::MutexLocker lock(&mutex_);
   map_builder_bridge_.sensor_bridge(trajectory_id)
       ->HandlePointCloud2Message(sensor_id, msg);
+}
+//james
+
+void Node::PublishHaloPointCloud(
+    const int trajectory_id, const string& sensor_id,
+    const sensor_msgs::PointCloud2::ConstPtr& msg) 
+{
+//   LOG(INFO) << "james::PublishHaloPointCloud Trajectory_id " << trajectory_id << " sensor_id:" << msg->header.frame_id << std::endl;
+  halo_point_cloud_publisher_.publish(msg);
 }
 
 void Node::SerializeState(const string& filename) {

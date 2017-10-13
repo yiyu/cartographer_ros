@@ -74,6 +74,35 @@ sensor_msgs::PointCloud2 PreparePointCloud2Message(const int64 timestamp,
   msg.data.resize(16 * num_points);
   return msg;
 }
+//james
+sensor_msgs::PointCloud2 PrepareHaloPointCloud2Message(const int64 timestamp,
+                                                   const string& frame_id,
+                                                   const int num_points) {
+  sensor_msgs::PointCloud2 msg;
+  msg.header.stamp = ToRos(::cartographer::common::FromUniversal(timestamp));
+  msg.header.frame_id = frame_id;
+  msg.height = 60;
+  msg.width = 80;
+  msg.fields.resize(3);
+  msg.fields[0].name = "x";
+  msg.fields[0].offset = 0;
+  msg.fields[0].datatype = sensor_msgs::PointField::FLOAT32;
+  msg.fields[0].count = 1;
+  msg.fields[1].name = "y";
+  msg.fields[1].offset = 4;
+  msg.fields[1].datatype = sensor_msgs::PointField::FLOAT32;
+  msg.fields[1].count = 1;
+  msg.fields[2].name = "z";
+  msg.fields[2].offset = 8;
+  msg.fields[2].datatype = sensor_msgs::PointField::FLOAT32;
+  msg.fields[2].count = 1;
+  msg.is_bigendian = false;
+  msg.point_step = 16;
+  msg.row_step = 16 * msg.width;
+  msg.is_dense = true;
+  msg.data.resize(16 * num_points);
+  return msg;
+}
 
 // For sensor_msgs::LaserScan.
 bool HasEcho(float) { return true; }
@@ -140,14 +169,22 @@ bool PointCloud2HasField(const sensor_msgs::PointCloud2& pc2,
 sensor_msgs::PointCloud2 ToPointCloud2Message(
     const int64 timestamp, const string& frame_id,
     const ::cartographer::sensor::PointCloud& point_cloud) {
-  auto msg = PreparePointCloud2Message(timestamp, frame_id, point_cloud.size());
+  //auto msg = PreparePointCloud2Message(timestamp, frame_id, point_cloud.size());
+  sensor_msgs::PointCloud2 msg;
+  if(point_cloud.size() != 60*80)
+    msg = PreparePointCloud2Message(timestamp, frame_id, point_cloud.size());
+  else
+    msg = PrepareHaloPointCloud2Message(timestamp, frame_id, point_cloud.size());
+  //std::cout << "James::ToPointCloud2Message:[" ;
   ::ros::serialization::OStream stream(msg.data.data(), msg.data.size());
   for (const auto& point : point_cloud) {
     stream.next(point.x());
     stream.next(point.y());
     stream.next(point.z());
+  //  std::cout << point.x() << "," << point.y() << "," << point.z() << ",";
     stream.next(kPointCloudComponentFourMagic);
   }
+  //std::cout <<"]"<< std::endl;
   return msg;
 }
 

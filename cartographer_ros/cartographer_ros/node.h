@@ -136,9 +136,12 @@ class Node {
   ::ros::Publisher constraint_list_publisher_;
   //james imu test 
   ::ros::Publisher trajectory_halo_imu_list_publisher_;
+  ::ros::Publisher halo_point_cloud_publisher_;
 public:
   ::ros::Publisher halo_pose_list_publisher_;
   ::ros::Publisher halo_imu_list_publisher_;
+  void PublishHaloPointCloud(int trajectory_id, const string& sensor_id,
+                            const sensor_msgs::PointCloud2::ConstPtr& msg);
  private:
 ////////////
   // These ros::ServiceServers need to live for the lifetime of the node.

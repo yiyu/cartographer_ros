@@ -271,8 +271,11 @@ void Run(const std::string& bag_filenames) {
   // final optimization, serialization, and optional indefinite spinning at the
   // end.
   clock_republish_timer.start();
+  std::cout << "Slam:: RunFinalOptimization.... " << std::endl;
+ 
   node.RunFinalOptimization();
-
+std::cout << "Slam:: RunFinalOptimization.... Finished!!" << std::endl;
+ 
   const std::chrono::time_point<std::chrono::steady_clock> end_time =
       std::chrono::steady_clock::now();
   const double wall_clock_seconds =
@@ -291,8 +294,9 @@ void Run(const std::string& bag_filenames) {
   LOG(INFO) << "Peak memory usage: " << usage.ru_maxrss << " KiB";
 #endif
 
-  if (::ros::ok()) {
-    const string output_filename = bag_filenames.front() + ".pbstream";
+  //if (::ros::ok()) 
+  {
+    const string output_filename = bag_filenames + ".pbstream";
     LOG(INFO) << "Writing state to '" << output_filename << "'...";
     node.SerializeState(output_filename);
   }

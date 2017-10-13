@@ -54,12 +54,16 @@ class InstantMsg
 {
 public:
   int64 time_stamp_;
-  void*  base_;
+  //void*  base_;
+  std::ifstream* inifile_;
   int type_;
   int offset_;
   int length_;
   //std::string frame_id;
   std::string topic_;
+  ::cartographer::transform::Rigid3d sensor_to_tracking_;
+  cartographer::sensor::PointCloud ranges_;
+   cartographer::sensor::ImuData imuData_;
   ros::Time getTime() const
   {
    
@@ -75,13 +79,14 @@ public:
   }
 
 
-  int parsmsg(int64 time_stamp,void* base,int type,int offset,int length)
+  int parsmsg(int64 time_stamp,std::ifstream* inifile,int type,int offset,int length)
   {
   
-    //ROS_INFO(">james:parsmsg:time_stamp:%llu,base:%p,type:%d,offset:%d,length:%d,topic:%s<\n",time_stamp, base,type,offset,length,topic_.c_str());
+    ROS_INFO(">james:parsmsg:time_stamp:%llu,type:%d,offset:%d,length:%d,topic:%s<\n",time_stamp,type,offset,length,topic_.c_str());
     int len = 0;
     time_stamp_ = time_stamp;
-    base_=base;
+    //base_=inifile;
+    inifile_=inifile;
     type_=type;
     offset_=offset;
     length_ = length;
@@ -90,9 +95,12 @@ public:
     {
       topic_ = "imu" ;
       len = length;
+      std::string sensor_id = "imu";
+      inifile_->read((char*)&imuData_,length_);
+     
     }else if(type == 2)
     {
-      ROS_ERROR(">james:parsmsg:time_stamp:%llu,base:%p,type:%d,offset:%d,length:%d,topic:%s<\n",time_stamp, base,type,offset,length,topic_.c_str());
+     // ROS_ERROR(">james:parsmsg:time_stamp:%llu,base:%p,type:%d,offset:%d,length:%d,topic:%s<\n",time_stamp, base,type,offset,length,topic_.c_str());
     
       std::cout << "ERROR: not support message type=2" << std::endl;
 
@@ -101,20 +109,30 @@ public:
 
       len = length;
       unsigned char strLen = 0;
-      memcpy(&strLen,(void*)((char*)base_+offset),sizeof(unsigned char));
+      inifile->read((char*)&strLen,sizeof(unsigned char));
+     // memcpy(&strLen,(void*)((char*)base_+offset),sizeof(unsigned char));
       offset +=sizeof(unsigned char);
       len += sizeof(unsigned char);
       char cSensor_id[256] ={0};
-      memcpy(cSensor_id,(void*)((char*)base_+offset),strLen);
+      inifile->read((char*)cSensor_id,strLen);
+      //memcpy(cSensor_id,(void*)((char*)base_+offset),strLen);
       offset += (int)strLen ;
       len += (int)strLen;
-      ::cartographer::transform::Rigid3d sensor_to_tracking;
-      memcpy(&sensor_to_tracking,(void*)((char*)base_+offset),sizeof(::cartographer::transform::Rigid3d));
+      
+      inifile->read((char*)&sensor_to_tracking_,sizeof(::cartographer::transform::Rigid3d));
+      //memcpy(&sensor_to_tracking,(void*)((char*)base_+offset),sizeof(::cartographer::transform::Rigid3d));
       offset += sizeof(::cartographer::transform::Rigid3d);
       len += sizeof(::cartographer::transform::Rigid3d);
-       std::string sensor_id = cSensor_id;
-       topic_ = cSensor_id;
-     //  std::cout << "======================parsmsg sensor_id:=====================" << topic_ << std::endl;
+      std::string sensor_id = cSensor_id;
+      topic_ = cSensor_id;
+      cartographer::sensor::proto::CompressedPointCloud pts;
+      char* pData = new char[length_];
+      inifile_->read((char*)pData,length_);
+     
+      pts.ParseFromArray(pData,length_);
+      ranges_ = cartographer::sensor::CompressedPointCloud(pts).Decompress();
+      delete[] pData;
+      std::cout << "strLen:" <<(int) strLen << " cSensor_id:" << cSensor_id << " sensor_to_tracking:" << sensor_to_tracking_ << std::endl;
     }else
       std::cout << "ERROR: not support message type";
     
@@ -123,23 +141,29 @@ public:
   
   boost::shared_ptr<sensor_msgs::PointCloud2> getPointCloud2() const
   {
-    //ROS_INFO(">james:getPointCloud2:time_stamp:%llu,base:%p,type:%d,offset:%d,length:%d,topic:%s<\n",time_stamp_, base_,type_,offset_,length_,topic_.c_str());
+   // ROS_INFO(">james:getPointCloud2:time_stamp:%llu,base:%p,type:%d,offset:%d,length:%d,topic:%s<\n",time_stamp_, base_,type_,offset_,length_,topic_.c_str());
    
      boost::shared_ptr<sensor_msgs::PointCloud2> msg = boost::make_shared<sensor_msgs::PointCloud2>();
       unsigned char strLen = 0;
       int offset = offset_;
-      memcpy(&strLen,(void*)((char*)base_+offset),sizeof(unsigned char));
+      //inifile_->read((char*)&strLen,sizeof(unsigned char));
+    //  memcpy(&strLen,(void*)((char*)base_+offset),sizeof(unsigned char));
       offset +=sizeof(unsigned char);
       char cSensor_id[256] ={0};
-      memcpy(cSensor_id,(void*)((char*)base_+offset),strLen);
+      //inifile_->read((char*)cSensor_id,strLen);
+     // memcpy(cSensor_id,(void*)((char*)base_+offset),strLen);
       offset += (int)strLen ;
      
       ::cartographer::transform::Rigid3d sensor_to_tracking;
-      memcpy(&sensor_to_tracking,(void*)((char*)base_+offset),sizeof(::cartographer::transform::Rigid3d));
+      //inifile_->read((char*)&sensor_to_tracking,sizeof(::cartographer::transform::Rigid3d));
+      //memcpy(&sensor_to_tracking,(void*)((char*)base_+offset),sizeof(::cartographer::transform::Rigid3d));
       offset += sizeof(::cartographer::transform::Rigid3d);
-      cartographer::sensor::proto::CompressedPointCloud pts;
-      pts.ParseFromArray(((char*)base_+offset),length_);
-      cartographer::sensor::PointCloud ranges = cartographer::sensor::CompressedPointCloud(pts).Decompress();
+      //cartographer::sensor::proto::CompressedPointCloud pts;
+      //char* pData = new char[length_];
+      //inifile_->read((char*)pData,length_);
+     
+      //pts.ParseFromArray(pData,length_);
+      //cartographer::sensor::PointCloud ranges = cartographer::sensor::CompressedPointCloud(pts).Decompress();
       std::string frame_id ="" ;
       std::string sensor_id = cSensor_id;
    
@@ -147,8 +171,11 @@ public:
           frame_id = "horizontal_vlp16_link";
         else if( sensor_id == "vertical_laser_3d" || topic_ == "points2_2")
           frame_id="vertical_vlp16_link";
-     
-      *msg = cartographer_ros::ToPointCloud2Message(time_stamp_,frame_id,ranges);
+      
+       std::cout << ">>>>>cSensor_id:[" << topic_ << "]sensor_to_tracking["<< sensor_to_tracking_<<"]length_[" << length_<<"]"<< std::endl;
+
+      *msg = cartographer_ros::ToPointCloud2Message(time_stamp_,frame_id,ranges_);
+      //delete[] pData;
     return msg;
   }
 
@@ -158,16 +185,16 @@ public:
 
       std::string sensor_id = "imu";
       //cartographer::sensor::proto::ImuData imuData;
-       cartographer::sensor::ImuData imuData;
-
-      memcpy((void*)&imuData,(void*)((char*)base_+offset_),length_);
+      //cartographer::sensor::ImuData imuData;
+      //inifile_->read((char*)&imuData,length_);
+      //memcpy((void*)&imuData,(void*)((char*)base_+offset_),length_);
 
     //  cartographer::sensor::ImuData imu = cartographer::sensor::FromProto(imuData);
-       cartographer::common::Time time = imuData.time;
+       cartographer::common::Time time = imuData_.time;
       //Eigen::Vector3d linear_acceleration = cartographer::transform::ToEigen(imuData.linear_acceleration());
       //Eigen::Vector3d angular_velocity = cartographer::transform::ToEigen(imuData.angular_velocity());
-      Eigen::Vector3d linear_acceleration = imuData.linear_acceleration;
-      Eigen::Vector3d angular_velocity = imuData.angular_velocity;
+      Eigen::Vector3d linear_acceleration = imuData_.linear_acceleration;
+      Eigen::Vector3d angular_velocity = imuData_.angular_velocity;
 
       //ROS_INFO(">james:getImu:time_stamp:%llu,base:%p,type:%d,offset:%d,length:%d,topic:%s<\n",time_stamp_, base_,type_,offset_,length_,topic_.c_str());
       ::cartographer::transform::Rigid3d rigid_imu(linear_acceleration,cartographer::transform::AngleAxisVectorToRotationQuaternion(angular_velocity));
@@ -175,9 +202,10 @@ public:
       //msg->header.stamp =  ToRos(::cartographer::common::FromUniversal(time_stamp_));
       msg->header.frame_id = "imu_link";
       msg->header.stamp = ToRos(time_stamp_);
+      //james imu test
       msg->linear_acceleration.x = linear_acceleration.x();
-      msg->linear_acceleration.y =linear_acceleration.y();
-      msg->linear_acceleration.z =linear_acceleration.z();
+      msg->linear_acceleration.y = linear_acceleration.y();
+      msg->linear_acceleration.z = linear_acceleration.z();
       msg->angular_velocity.x = angular_velocity.x();
       msg->angular_velocity.y = angular_velocity.y();
       msg->angular_velocity.z = angular_velocity.z();
@@ -359,7 +387,12 @@ void simulate_imu_slam( Node& node,const int trajectory_id,const std::string& st
 
 void simulate_slam2( Node& node,const int trajectory_id,const std::string& strData,::ros::Publisher& clock_publisher,std::unordered_set<string>& expected_sensor_ids)
 {
-  void *mapped_mem;
+
+  std::ifstream inifile(strData.c_str(),std::ios::binary|std::ios::in); 
+  if( !inifile.is_open() )
+        throw std::domain_error( "Unable to load input file: " + strData );
+    
+ /* void *mapped_mem;
   void* start_addr = 0;
   
   FILE* fd = fopen(strData.c_str(), "rb");
@@ -367,10 +400,10 @@ void simulate_slam2( Node& node,const int trajectory_id,const std::string& strDa
   int nFileLen= ftell(fd);
   int sharedFileName = fileno(fd);
   mapped_mem= (char*)mmap(start_addr, nFileLen, PROT_READ,MAP_PRIVATE,sharedFileName,0);
+  */
   size_t cur = 0;
   int flength = 20480;
   
-  std::cout << "simulate_slam2:laser data size:" << cur << "file:" << nFileLen   <<std::endl;
   int iCount = 0;
   int iImuCount = 0;
   int iMultLaserCount = 0;
@@ -384,24 +417,30 @@ void simulate_slam2( Node& node,const int trajectory_id,const std::string& strDa
    ::ros::Time begin_time;
   std::deque<InstantMsg> delayed_messages;
   
-  while( cur  <= nFileLen )//&& new_t -start <= FLAGS_duration*CLOCKS_PER_SEC*60)//&& iMultLaserCount < 199 && iPointCloudCount <199  )
+  std::cout << "simulate_slam2:laser data file:" << strData  <<std::endl;
+  while(!inifile.eof())//cur  <= nFileLen && iCount < 100000)//&& new_t -start <= FLAGS_duration*CLOCKS_PER_SEC*60)//&& iMultLaserCount < 199 && iPointCloudCount <199  )
   {
     new_t = clock();
-    unsigned int flength = *(unsigned int*)((char*)mapped_mem+cur);
+    unsigned int flength = 0;//*(unsigned int*)((char*)mapped_mem+cur);
+    inifile.read((char*)&flength,sizeof(unsigned int));
+  //  std::cout << "====================== read file end =====================flength::"<< flength << std::endl;
     cur += sizeof(unsigned int);
- 
-    int64 time_stamp = *(int64*)((char*)mapped_mem+cur);
+    int64 time_stamp = 0;// *(int64*)((char*)mapped_mem+cur);
+    inifile.read((char*)&time_stamp,sizeof(int64));
+    
     cur += sizeof(int64);
-    unsigned char type = *(unsigned char*)((char*)mapped_mem+cur);
+    unsigned char type = 0;//*(unsigned char*)((char*)mapped_mem+cur);
+    inifile.read((char*)&type,sizeof(unsigned char));
     cur += sizeof(unsigned char);
+    /*
     if(cur + flength >= nFileLen )
     {
         std::cout << "====================== read file end =====================" << std::endl;
         break;
-    }
+    }*/
 
     InstantMsg msg;
-    int msg_len = msg.parsmsg(time_stamp,mapped_mem,type,cur,flength);
+    int msg_len = msg.parsmsg(time_stamp,&inifile,type,cur,flength);
     if(iCount == 0)
        begin_time = msg.getTime();
      iCount++;
@@ -414,13 +453,21 @@ void simulate_slam2( Node& node,const int trajectory_id,const std::string& strDa
       //  const string topic = node.node_handle()->resolveName(delayed_msg.getTopic(), false /* resolve */);
          // ::ros::Time time = delayed_msg.getTime();
     
-        if (delayed_msg.isType() == 4) {
+        if (delayed_msg.isType() == 4) 
+        {
             std::cout << ">james:poitcloud::iCount:"<< iCount << " timestamp:"  <<  delayed_msg.getTime() << " in64_time:"<< delayed_msg.time_stamp_ << " topic:" << topic <<" delayed_msg.getTopic:" << delayed_msg.getTopic() << std::endl;
+            static int i1 =0;
+            i1++;
+            if(i1%20 == 0)
+              node.PublishHaloPointCloud(trajectory_id, topic,delayed_msg.getPointCloud2());
+            iMultLaserCount++;
+            iPointCloudCount++;
             node.HandlePointCloud2Message(trajectory_id, topic,delayed_msg.getPointCloud2());
         }
         if (delayed_msg.isType() == 1) {
       //    std::cout << ">james:         Imu::iCount:"<< iCount << " timestamp:"  <<  delayed_msg.getTime() << " in64_time:"<< delayed_msg.time_stamp_ << " topic:" << topic <<" delayed_msg.getTopic:" << delayed_msg.getTopic() << std::endl;
          // node.halo_imu_link_publisher_.publish(delayed_msg.getImu());
+          iImuCount++;
             node.HandleImuMessage(trajectory_id, topic,delayed_msg.getImu());         
         }
         delayed_messages.pop_front();
@@ -436,24 +483,26 @@ void simulate_slam2( Node& node,const int trajectory_id,const std::string& strDa
         continue;
     }
      //LOG_EVERY_N(INFO, 1000)<< "**[iCount] " << iCount << " sensor_id:" <<  msg.getTopic() << " topic:" << topic << "  expected_sensor_ids size:" << expected_sensor_ids.size() << "time_stamp:" << time_stamp << " begin_time:" << begin_time<<std::endl;
-   // usleep(5000);
     delayed_messages.push_back(msg);
     //std::cout << "james >>>>>>>>>>>> Total:" << iCount << " ImuCout:" << iImuCount << " MultiLaserCount:" << iMultLaserCount << " PointCloudCount:" << iPointCloudCount << " delay:" << new_t - start << " duration:"<< CLOCKS_PER_SEC*60 <<std::endl;
+    usleep(1);
 
     rosgraph_msgs::Clock clock;
     clock.clock = ToRos(time_stamp);
     clock_publisher.publish(clock);
     ::ros::spinOnce();
     new_t = ::clock();
-   // LOG_EVERY_N(INFO, 100)
-   //       << "Processed " << (msg.getTime() - begin_time).toSec()  << " bag time seconds... process time: " 
-    //      << new_t-start  << " delayed_messages:" << delayed_messages.size() ;
+    LOG_EVERY_N(INFO, 100)
+          << "Processed " << (msg.getTime() - begin_time).toSec()  << " bag time seconds... process time: " 
+          << new_t-start  << " delayed_messages:" << delayed_messages.size() ;
     start = new_t;
   }
 
   std::cout << " ******************Total:" << iCount << " ImuCout:" << iImuCount << " MultiLaserCount:" << iMultLaserCount << " PointCloudCount:" << iPointCloudCount  << " duration:" << new_t - start << std::endl;
-  fclose(fd);
-  munmap(mapped_mem, nFileLen);
+  //fclose(fd);
+  //munmap(mapped_mem, nFileLen);
+inifile.close();
+  node.FinishAllTrajectories();
 }
 
 }  // namespace

@@ -20,6 +20,46 @@
 #include "cartographer/io/proto_stream.h"
 #include "cartographer_ros/msg_conversion.h"
 
+
+#include "cartographer/common/make_unique.h"
+#include "cartographer/common/time.h"
+#include "cartographer/io/file_writer.h"
+#include "cartographer/io/null_points_processor.h"
+#include "cartographer/io/ply_writing_points_processor.h"
+#include "cartographer/io/points_processor.h"
+#include "cartographer/io/xray_points_processor.h"
+#include "cartographer/mapping/proto/trajectory.pb.h"
+
+namespace carto = ::cartographer;
+/*
+void WriteTrajectory(const std::vector<::cartographer::mapping::TrajectoryNode>&
+                         trajectory_nodes,
+                     const std::string& stem) {
+  carto::mapping::proto::Trajectory trajectory;
+    
+
+  // TODO(whess): Add multi-trajectory support.
+  for (const auto& node : trajectory_nodes) {
+    const auto& data = *node.constant_data;
+    auto* node_proto = trajectory.add_node();
+    node_proto->set_timestamp(carto::common::ToUniversal(data.time));
+    *node_proto->mutable_pose() =
+        carto::transform::ToProto(node.pose );//james * data.tracking_to_pose);
+  }
+
+  // Write the trajectory.
+  std::ofstream proto_file(stem + ".pb",
+                           std::ios_base::out | std::ios_base::binary);
+  CHECK(trajectory.SerializeToOstream(&proto_file))
+      << "Could not serialize trajectory.";
+  proto_file.close();
+  CHECK(proto_file) << "Could not write trajectory.";
+}
+*/
+
+
+
+
 namespace cartographer_ros {
 
 namespace {
@@ -86,9 +126,103 @@ void MapBuilderBridge::RunFinalOptimization() {
 }
 
 void MapBuilderBridge::SerializeState(const std::string& filename) {
+  std::cout << "SerializeState filename:" << filename << std::endl;
   cartographer::io::ProtoStreamWriter writer(filename);
   map_builder_.SerializeState(&writer);
   CHECK(writer.Close()) << "Could not write state.";
+
+  Write3DAssets(filename);
+/*
+  cartographer::io::ProtoStreamReader stream(filename);
+  carto::mapping::proto::SparsePoseGraph pose_graph_proto;
+  stream.ReadProto(&pose_graph_proto);
+  std::cout << "SerializeState:Pose graphs contains " << pose_graph_proto.trajectory_size() << std::endl;
+  std::vector<::cartographer::mapping::proto::Trajectory> all_trajectories(
+      pose_graph_proto.trajectory().begin(),
+      pose_graph_proto.trajectory().end());
+
+ double voxel_size = trajectory_options_[0]
+              .trajectory_builder_options.trajectory_builder_3d_options()
+              .submaps_options()
+              .high_resolution();
+  std::cout << "SerializeState:Writing 3D assets with voxel_size:"<<voxel_size <<" stem '" << filename << "'..." << std::endl;
+    
+  Write3DAssets(all_trajectories,voxel_size,filename);*/
+}
+
+void MapBuilderBridge::Write3DAssets(const std::string& stem)
+{
+  double voxel_size = trajectory_options_[0]
+              .trajectory_builder_options.trajectory_builder_3d_options()
+              .submaps_options()
+              .high_resolution();
+  carto::io::XRayPointsProcessor::DrawTrajectories draw = carto::io::XRayPointsProcessor::DrawTrajectories::kYes;
+  carto::mapping::proto::SparsePoseGraph pose_graph_proto = map_builder_.sparse_pose_graph()->ToProto();;
+  
+  std::vector<::cartographer::mapping::proto::Trajectory> all_trajectories(
+      pose_graph_proto.trajectory().begin(),
+      pose_graph_proto.trajectory().end());
+
+  std::cout << "SerializeState:Writing 3D assets with voxel_size:"<<voxel_size <<" stem '" << stem << "'..." << std::endl;
+  const auto file_writer_factory = [](const string& stem) {
+    return carto::common::make_unique<carto::io::StreamFileWriter>(stem);
+  };
+
+  carto::io::NullPointsProcessor null_points_processor;
+  carto::io::XRayPointsProcessor xy_xray_points_processor(
+      voxel_size,
+      carto::transform::Rigid3f::Rotation(
+          Eigen::AngleAxisf(-M_PI / 2.f, Eigen::Vector3f::UnitY())),
+      {}, draw,stem + "_xray_xy", all_trajectories,file_writer_factory, &null_points_processor);
+  std::cout << "Write3DAssets: file:" << stem + "_xray_xy" << std::endl;
+  carto::io::XRayPointsProcessor yz_xray_points_processor(
+      voxel_size,
+      carto::transform::Rigid3f::Rotation(
+          Eigen::AngleAxisf(M_PI, Eigen::Vector3f::UnitZ())),
+      {}, draw,stem + "_xray_yz",all_trajectories, file_writer_factory, &xy_xray_points_processor);
+  
+  carto::io::XRayPointsProcessor xz_xray_points_processor(
+      voxel_size,
+      carto::transform::Rigid3f::Rotation(
+          Eigen::AngleAxisf(-M_PI / 2.f, Eigen::Vector3f::UnitZ())),
+      {},draw, stem + "_xray_xz", all_trajectories,file_writer_factory, &yz_xray_points_processor);
+  
+  carto::io::PlyWritingPointsProcessor ply_writing_points_processor(
+      file_writer_factory(stem + ".ply"), &xz_xray_points_processor);
+
+  const auto all_trajectory_nodes = map_builder_.sparse_pose_graph()->GetTrajectoryNodes();
+   std::cout << "all_trajectory_nodes.size():" << all_trajectory_nodes.size() << "" << std::endl;
+  
+  for (int trajectory_id = 0;trajectory_id < static_cast<int>(all_trajectory_nodes.size());++trajectory_id) 
+  {
+    const auto& single_trajectory_nodes = all_trajectory_nodes[trajectory_id];
+    //marker.color = ToMessage(cartographer::io::GetColor(trajectory_id));
+     std::cout << "....single_trajectory_nodes.size():" << single_trajectory_nodes.size() << "" << std::endl;
+    for (const auto& node : single_trajectory_nodes) 
+    {
+      if (node.trimmed())
+        continue;
+      auto points_batch = carto::common::make_unique<carto::io::PointsBatch>(); 
+      points_batch->origin = node.pose.translation().cast<float>();
+      const carto::sensor::PointCloud& point_cloud = node.constant_data->high_resolution_point_cloud;
+       std::cout << "........point_cloud.size():" << point_cloud.size() << "" << std::endl;
+  
+      for (size_t i = 0; i < point_cloud.size(); ++i) 
+      {
+        points_batch->points.push_back(point_cloud[i]);
+      }
+     // xy_xray_points_processor.Process(std::move(points_batch));  
+      ply_writing_points_processor.Process(std::move(points_batch));
+
+    }
+    std::cout << "trajectory_id:"<< trajectory_id <<std::endl;
+  }
+
+  ply_writing_points_processor.Flush();
+  
+ // xz_xray_points_processor.Flush();
+   // xy_xray_points_processor.Flush();
+     std::cout << "ply_writing_points_processor.Flush():"<< std::endl;
 }
 
 bool MapBuilderBridge::HandleSubmapQuery(
