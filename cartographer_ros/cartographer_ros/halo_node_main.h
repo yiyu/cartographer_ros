@@ -80,7 +80,7 @@ public:
   int parsmsg(int64 time_stamp,std::ifstream* inifile,int type,int length)
   {
   
-    ROS_INFO(">james:parsmsg:time_stamp:%llu,type:%d,length:%d,topic:%s<\n",time_stamp,type,length,topic_.c_str());
+    //ROS_INFO(">james:parsmsg:time_stamp:%llu,type:%d,length:%d,topic:%s<\n",time_stamp,type,length,topic_.c_str());
     int len = 0;
     time_stamp_ = time_stamp;
     inifile_=inifile;
@@ -116,7 +116,7 @@ public:
       pts.ParseFromArray(pData,length_);
       ranges_ = cartographer::sensor::CompressedPointCloud(pts).Decompress();
       delete[] pData;
-      std::cout << "strLen:" <<(int) strLen << " cSensor_id:" << cSensor_id << " sensor_to_tracking:" << sensor_to_tracking_ << std::endl;
+      //std::cout << "strLen:" <<(int) strLen << " cSensor_id:" << cSensor_id << " sensor_to_tracking:" << sensor_to_tracking_ << std::endl;
     }else
       std::cout << "ERROR: not support message type";
     
@@ -138,7 +138,7 @@ public:
       else if( sensor_id == "vertical_laser_3d" || topic_ == "points2_2")
           frame_id="vertical_vlp16_link";
       
-       std::cout << ">>>>>cSensor_id:[" << topic_ << "]sensor_to_tracking["<< sensor_to_tracking_<<"]length_[" << length_<<"]"<< std::endl;
+      // std::cout << ">>>>>cSensor_id:[" << topic_ << "]sensor_to_tracking["<< sensor_to_tracking_<<"]length_[" << length_<<"]"<< std::endl;
 
       *msg = cartographer_ros::ToPointCloud2Message(time_stamp_,frame_id,ranges_);
     return msg;
@@ -364,7 +364,7 @@ void simulate_slam2( Node& node,const int trajectory_id,const std::string& strDa
   std::deque<InstantMsg> delayed_messages;
   
   std::cout << "simulate_slam2:laser data file:" << strData  <<std::endl;
-  while(!inifile.eof())//cur  <= nFileLen && iCount < 100000)//&& new_t -start <= FLAGS_duration*CLOCKS_PER_SEC*60)//&& iMultLaserCount < 199 && iPointCloudCount <199  )
+  while(!inifile.eof()&& iCount < 100000)//cur  <= nFileLen && iCount < 100000)//&& new_t -start <= FLAGS_duration*CLOCKS_PER_SEC*60)//&& iMultLaserCount < 199 && iPointCloudCount <199  )
   {
     new_t = clock();
     unsigned int flength = 0;
@@ -392,11 +392,8 @@ void simulate_slam2( Node& node,const int trajectory_id,const std::string& strDa
     
         if (delayed_msg.isType() == 4) 
         {
-            std::cout << ">james:poitcloud::iCount:"<< iCount << " timestamp:"  <<  delayed_msg.getTime() << " in64_time:"<< delayed_msg.time_stamp_ << " topic:" << topic <<" delayed_msg.getTopic:" << delayed_msg.getTopic() << std::endl;
-            static int i1 =0;
-            i1++;
-            if(i1%20 == 0)
-              node.PublishHaloPointCloud(trajectory_id, topic,delayed_msg.getPointCloud2());
+            //std::cout << ">james:poitcloud::iCount:"<< iCount << " timestamp:"  <<  delayed_msg.getTime() << " in64_time:"<< delayed_msg.time_stamp_ << " topic:" << topic <<" delayed_msg.getTopic:" << delayed_msg.getTopic() << std::endl;
+            node.PublishHaloPointCloud(trajectory_id, topic,delayed_msg.getPointCloud2());
             iMultLaserCount++;
             iPointCloudCount++;
             node.HandlePointCloud2Message(trajectory_id, topic,delayed_msg.getPointCloud2());
@@ -420,7 +417,7 @@ void simulate_slam2( Node& node,const int trajectory_id,const std::string& strDa
      //LOG_EVERY_N(INFO, 1000)<< "**[iCount] " << iCount << " sensor_id:" <<  msg.getTopic() << " topic:" << topic << "  expected_sensor_ids size:" << expected_sensor_ids.size() << "time_stamp:" << time_stamp << " begin_time:" << begin_time<<std::endl;
     delayed_messages.push_back(msg);
     //std::cout << "james >>>>>>>>>>>> Total:" << iCount << " ImuCout:" << iImuCount << " MultiLaserCount:" << iMultLaserCount << " PointCloudCount:" << iPointCloudCount << " delay:" << new_t - start << " duration:"<< CLOCKS_PER_SEC*60 <<std::endl;
-    usleep(1);
+    usleep(1000);
 
     rosgraph_msgs::Clock clock;
     clock.clock = ToRos(time_stamp);

@@ -21,6 +21,9 @@
   <material name="gray">
     <color rgba="0.2 0.2 0.2 1" />
   </material>
+  <material name="yellow">
+    <color rgba="0.8 0.8 0.0 1" />
+  </material>
 
   <link name="imu_link">
     <visual>
@@ -38,7 +41,7 @@
       <geometry>
         <cylinder length="0.07" radius="0.05" />
       </geometry>
-      <material name="gray" />
+      <material name="yellow" />
     </visual>
   </link>
 

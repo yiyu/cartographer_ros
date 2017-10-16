@@ -152,10 +152,10 @@ void MapBuilderBridge::SerializeState(const std::string& filename) {
 
 void MapBuilderBridge::Write3DAssets(const std::string& stem)
 {
-  double voxel_size = trajectory_options_[0]
+  double voxel_size = 0.025;/* trajectory_options_[0]
               .trajectory_builder_options.trajectory_builder_3d_options()
               .submaps_options()
-              .high_resolution();
+              .high_resolution();*/
   carto::io::XRayPointsProcessor::DrawTrajectories draw = carto::io::XRayPointsProcessor::DrawTrajectories::kYes;
   carto::mapping::proto::SparsePoseGraph pose_graph_proto = map_builder_.sparse_pose_graph()->ToProto();;
   
@@ -171,9 +171,9 @@ void MapBuilderBridge::Write3DAssets(const std::string& stem)
   carto::io::NullPointsProcessor null_points_processor;
   carto::io::XRayPointsProcessor xy_xray_points_processor(
       voxel_size,
-      carto::transform::Rigid3f::Rotation(
-          Eigen::AngleAxisf(-M_PI / 2.f, Eigen::Vector3f::UnitY())),
+      carto::transform::Rigid3f::Rotation(Eigen::AngleAxisf(-M_PI / 2.f, Eigen::Vector3f::UnitY())),
       {}, draw,stem + "_xray_xy", all_trajectories,file_writer_factory, &null_points_processor);
+  
   std::cout << "Write3DAssets: file:" << stem + "_xray_xy" << std::endl;
   carto::io::XRayPointsProcessor yz_xray_points_processor(
       voxel_size,

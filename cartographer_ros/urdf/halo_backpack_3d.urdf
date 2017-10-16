@@ -18,8 +18,14 @@
   <material name="orange">
     <color rgba="1.0 0.5 0.2 1" />
   </material>
+  <material name="gray1">
+    <color rgba="0.5 0.5 0.5 0.8" />
+  </material>
   <material name="gray">
     <color rgba="0.2 0.2 0.2 1" />
+  </material>
+  <material name="yellow">
+    <color rgba="0.8 0.8 0.0 1" />
   </material>
 
   <link name="imu_link">
@@ -38,37 +44,29 @@
       <geometry>
         <cylinder length="0.07" radius="0.05" />
       </geometry>
-      <material name="gray" />
+      <material name="yellow" />
     </visual>
   </link>
 
-  <link name="vertical_vlp16_link">
-    <visual>
-      <origin xyz="0.0 0.0 0.0" />
+  <link name="base_link" >
+     <visual>
+      <origin xyz="0.1 0.0 0.0" />
       <geometry>
-        <cylinder length="0.07" radius="0.05" />
+        <box size="0.3 0.14 0.07" />
       </geometry>
-      <material name="gray" />
+      <material name="gray1" />
     </visual>
-  </link>
-
-  <link name="base_link" />
-
+</link>
   <joint name="imu_link_joint" type="fixed">
     <parent link="base_link" />
     <child link="imu_link" />
-    <origin xyz="0 0 0" rpy="3.1416 0 0" />
+    <origin xyz="0 0 0" rpy="1.5758 0 0" />
   </joint>
 
   <joint name="horizontal_vlp16_link_joint" type="fixed">
     <parent link="base_link" />
     <child link="horizontal_vlp16_link" />
-    <origin xyz="0.01 0. 0.19" rpy="0. -0.1745 3.1416" />
+    <origin xyz="0.1 0. 0." rpy="0. 0. 0." />
   </joint>
 
-  <joint name="vertical_vlp16_link_joint" type="fixed">
-    <parent link="base_link" />
-    <child link="vertical_vlp16_link" />
-    <origin xyz="0.19 0. 0.04" rpy="0. 1.3963 0." />
-  </joint>
 </robot>
