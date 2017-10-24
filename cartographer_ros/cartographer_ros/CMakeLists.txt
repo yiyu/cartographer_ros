@@ -69,6 +69,7 @@ install(TARGETS cartographer_occupancy_grid_node
 
 google_binary(cartographer_halo_node
   SRCS
+    calibration.cc
     halo_node_main.cc
 )
 

@@ -44,6 +44,8 @@
 #include "tf2_msgs/TFMessage.h"
 #include "tf2_ros/static_transform_broadcaster.h"
 #include "urdf/model.h"
+
+#include "imu_calibration/codels.h"
 namespace cartographer_ros {
 namespace {
 
@@ -80,7 +82,7 @@ public:
   int parsmsg(int64 time_stamp,std::ifstream* inifile,int type,int length)
   {
   
-    //ROS_INFO(">james:parsmsg:time_stamp:%llu,type:%d,length:%d,topic:%s<\n",time_stamp,type,length,topic_.c_str());
+    //printf(">james:parsmsg:time_stamp:%llu,type:%d,length:%d,topic:%s<\n",time_stamp,type,length,topic_.c_str());
     int len = 0;
     time_stamp_ = time_stamp;
     inifile_=inifile;
@@ -118,7 +120,7 @@ public:
       delete[] pData;
       //std::cout << "strLen:" <<(int) strLen << " cSensor_id:" << cSensor_id << " sensor_to_tracking:" << sensor_to_tracking_ << std::endl;
     }else
-      std::cout << "ERROR: not support message type";
+      std::cout << "parsmsg:ERROR: not support message type";
     
     return len;
   }
@@ -341,8 +343,85 @@ void simulate_imu_slam( Node& node,const int trajectory_id,const std::string& st
     
 }
 
+static Eigen::Vector3d linear_acceleration =  Eigen::Vector3d::Zero();
+static Eigen::Vector3d angular_velocity =  Eigen::Vector3d::Zero();
+
+static  bool flag_imu_calibrated_;
+static   ImuCalibrator imu_calibrator_;
+static  bool cal_finish = false;
+bool imu_calibration(const sensor_msgs::Imu::ConstPtr& msg)
+{
+    if(cal_finish)
+      return true;
+   ImuMeasurement imu_measurement;
+    bool flag_new_still_pose_detected=false;
+    int32_t still=0;
+
+    // Fill Variable with message
+    // Time Stamp
+    imu_measurement.ts.sec=msg->header.stamp.sec;
+    imu_measurement.ts.nsec=msg->header.stamp.nsec;
+
+    // Acceleration
+    imu_measurement.acc._value.ax=msg->linear_acceleration.x;
+    imu_measurement.acc._value.ay=msg->linear_acceleration.y;
+    imu_measurement.acc._value.az=msg->linear_acceleration.z;
+    imu_measurement.acc._present=true;
+
+    // Angular Velocity
+    imu_measurement.vel._value.wx=msg->angular_velocity.x;
+    imu_measurement.vel._value.wy=msg->angular_velocity.y;
+    imu_measurement.vel._value.wz=msg->angular_velocity.z;
+    imu_measurement.vel._present=true;
+
+   // std::cout<<" collecting data:{ "<<msg->linear_acceleration.x << "," << msg->linear_acceleration.y << ","<< msg->linear_acceleration.z << "}"<<std::endl;
+       
+    // Collect data
+    int error_collect=imu_calibrator_.collectData(&imu_measurement, still, flag_new_still_pose_detected);
+
+    if(error_collect)
+    {
+        std::cout<<"error collecting data: "<<error_collect<<std::endl;
+//        ros::shutdown();
+        return false;
+    }
+//std::cout<<" collecting data:{ "<<msg->linear_acceleration.x << "," << msg->linear_acceleration.y << ","<< msg->linear_acceleration.z << "} still:" << still << " flag_new_still_pose_detected:" << flag_new_still_pose_detected <<std::endl;
+     
+    if(flag_new_still_pose_detected)
+    {
+        std::cout<<"Still poses: "<<still<<" out of "<<imu_calibrator_.nposes<<"!!!!!!!!!!!!!!!!!!!!!"<<std::endl;
+
+        if(still >= imu_calibrator_.nposes)
+        {
+            cal_finish = true;
+            // Try calibration
+            int error_calibration=imu_calibrator_.calibrate();
+            if(!error_calibration)
+            {
+              std::cout<< "***********************************************************************" <<std::endl;
+                 std::cout<<"IMU calibration succeed!"<<std::endl;
+                flag_imu_calibrated_=true;
+                std::cout<<imu_calibrator_.imu_calibration_.print()<<std::endl;
+              std::cout<< "***********************************************************************" <<std::endl;
+              return true;
+            }
+            else
+                std::cout<< "imu_calibration error:" << error_calibration <<std::endl;
+        }
+    }
+    return false;
+}
+
+
+static Eigen::Matrix< double, 3 , 3> scale_mat ;
+static Eigen::Matrix< double, 3 , 1>  bias_vec ;
 void simulate_slam2( Node& node,const int trajectory_id,const std::string& strData,::ros::Publisher& clock_publisher,std::unordered_set<string>& expected_sensor_ids)
 {
+
+  scale_mat << 1.01333 ,0.122527, -0.050352,
+                     0 ,0.991342,0.151819,
+                     0 ,0 ,0.977609;
+ bias_vec << -0.333157, -0.142182, -0.410754;
 
   std::ifstream inifile(strData.c_str(),std::ios::binary|std::ios::in); 
   if( !inifile.is_open() )
@@ -364,6 +443,8 @@ void simulate_slam2( Node& node,const int trajectory_id,const std::string& strDa
   std::deque<InstantMsg> delayed_messages;
   
   std::cout << "simulate_slam2:laser data file:" << strData  <<std::endl;
+
+  imu_calibrator_.init();
   while(!inifile.eof()&& iCount < 100000)//cur  <= nFileLen && iCount < 100000)//&& new_t -start <= FLAGS_duration*CLOCKS_PER_SEC*60)//&& iMultLaserCount < 199 && iPointCloudCount <199  )
   {
     new_t = clock();
@@ -377,12 +458,13 @@ void simulate_slam2( Node& node,const int trajectory_id,const std::string& strDa
     inifile.read((char*)&type,sizeof(unsigned char));
     
     InstantMsg msg;
-    int msg_len = msg.parsmsg(time_stamp,&inifile,type,flength);
+   // printf(">james:parsmsg:time_stamp:%llu,type:%d,length:%d,count:%d<\n",time_stamp,type,flength,iCount);
+   int msg_len = msg.parsmsg(time_stamp,&inifile,type,flength);
     if(iCount == 0)
        begin_time = msg.getTime();
      iCount++;
      
-     
+    
     while (!delayed_messages.empty()  &&  delayed_messages.front().getTime() < msg.getTime() + ::ros::Duration(1.)) 
     {
         const InstantMsg& delayed_msg = delayed_messages.front();
@@ -399,10 +481,24 @@ void simulate_slam2( Node& node,const int trajectory_id,const std::string& strDa
             node.HandlePointCloud2Message(trajectory_id, topic,delayed_msg.getPointCloud2());
         }
         if (delayed_msg.isType() == 1) {
-      //    std::cout << ">james:         Imu::iCount:"<< iCount << " timestamp:"  <<  delayed_msg.getTime() << " in64_time:"<< delayed_msg.time_stamp_ << " topic:" << topic <<" delayed_msg.getTopic:" << delayed_msg.getTopic() << std::endl;
+         // std::cout << ">james:         Imu::iCount:"<< iCount << " timestamp:"  <<  delayed_msg.getTime() << " in64_time:"<< delayed_msg.time_stamp_ << " topic:" << topic <<" delayed_msg.getTopic:" << delayed_msg.getTopic() << std::endl;
          // node.halo_imu_link_publisher_.publish(delayed_msg.getImu());
+
           iImuCount++;
-            node.HandleImuMessage(trajectory_id, topic,delayed_msg.getImu());         
+          linear_acceleration.x() = delayed_msg.getImu()->linear_acceleration.x;
+          linear_acceleration.y() = delayed_msg.getImu()->linear_acceleration.y;
+          linear_acceleration.z() = delayed_msg.getImu()->linear_acceleration.z;
+          angular_velocity.x() = delayed_msg.getImu()->angular_velocity.x;
+          angular_velocity.y() = delayed_msg.getImu()->angular_velocity.y;
+          angular_velocity.z() = delayed_msg.getImu()->angular_velocity.z;
+
+       //   Eigen::Vector3d res_accel = scale_mat*(linear_acceleration + bias_vec);
+          ::cartographer::transform::Rigid3d rigid_imu(linear_acceleration,cartographer::transform::AngleAxisVectorToRotationQuaternion(angular_velocity));
+          if(iImuCount%20 == 0)
+            std::cout  << "cont:" << iImuCount << "imu:" << rigid_imu  << " norm:" << linear_acceleration.norm()  <<std::endl;
+       //   if(imu_calibration(delayed_msg.getImu()))
+        //    iCount = 1000000;
+          node.HandleImuMessage(trajectory_id, topic,delayed_msg.getImu());         
         }
         delayed_messages.pop_front();
     }
@@ -424,10 +520,13 @@ void simulate_slam2( Node& node,const int trajectory_id,const std::string& strDa
     clock_publisher.publish(clock);
     ::ros::spinOnce();
     new_t = ::clock();
-    LOG_EVERY_N(INFO, 100)
+   /*LOG_EVERY_N(INFO, 100)
           << "Processed " << (msg.getTime() - begin_time).toSec()  << " bag time seconds... process time: " 
-          << new_t-start  << " delayed_messages:" << delayed_messages.size() ;
-    start = new_t;
+          << new_t-start << " count:" << iCount << " delayed_messages:" << delayed_messages.size() 
+          << "linear_acceleration:{"<< linear_acceleration.x()/iImuCount << "," << linear_acceleration.y()/iImuCount << "," << linear_acceleration.y()/iImuCount << "}"
+          << "angular_velocity:{"<< angular_velocity.x()/iImuCount << "," << angular_velocity.y()/iImuCount << "," << angular_velocity.y()/iImuCount << "}" << std::endl;
+   */
+   start = new_t;
   }
 
   std::cout << " ******************Total:" << iCount << " ImuCout:" << iImuCount << " MultiLaserCount:" << iMultLaserCount << " PointCloudCount:" << iPointCloudCount  << " duration:" << new_t - start << std::endl;

@@ -175,16 +175,82 @@ sensor_msgs::PointCloud2 ToPointCloud2Message(
     msg = PreparePointCloud2Message(timestamp, frame_id, point_cloud.size());
   else
     msg = PrepareHaloPointCloud2Message(timestamp, frame_id, point_cloud.size());
-  //std::cout << "James::ToPointCloud2Message:[" ;
+  std::cout << "James::ToPointCloud2Message:[ size:" <<  point_cloud.size();
+  float depth = 0.;
+  float max = 0.;
+  float min =999.;
   ::ros::serialization::OStream stream(msg.data.data(), msg.data.size());
+  if(point_cloud.size() == 60*80)
+ {
+  for(int i =1;i< 79;i++)
+  { 
+
+    for(int j =1;j< 59;j++)
+    {
+      Eigen::Vector3f point = point_cloud[i*60+j];
+      
+      if(point.z() < 0.2 || point.z()> 2.)
+      {
+        stream.next(0);
+        stream.next(0);
+        stream.next(0);
+      }
+      else 
+      {
+        stream.next(point.x());
+        stream.next(point.y());
+        stream.next(point.z());
+      }
+
+      depth += point.z();
+      if(point.z() > max)
+         max = point.z();
+      if(point.z() < min)
+         min = point.z();
+    //  std::cout << point.x() << "," << point.y() << "," << point.z() << ",";
+      stream.next(kPointCloudComponentFourMagic);
+    }
+  }
+}else if(point_cloud.size() == 384)
+{
   for (const auto& point : point_cloud) {
+   
     stream.next(point.x());
     stream.next(point.y());
     stream.next(point.z());
+    depth += point.z();
   //  std::cout << point.x() << "," << point.y() << "," << point.z() << ",";
     stream.next(kPointCloudComponentFourMagic);
   }
-  //std::cout <<"]"<< std::endl;
+}
+else
+  {
+    LOG(ERROR) << "**********************ERROR**********************size:" << point_cloud.size()<< std::endl;
+  }
+/*
+  for (const auto& point : point_cloud) {
+    if(point.z() < 0.2 || point.z()> 2.)
+    {
+     stream.next(0);
+      stream.next(0);
+     stream.next(0);
+    }else 
+    {
+      stream.next(point.x());
+      stream.next(point.y());
+      stream.next(point.z());
+    }
+    depth += point.z();
+    if(point.z() > max)
+       max = point.z();
+     if(point.z() < min)
+       min = point.z();
+  //  std::cout << point.x() << "," << point.y() << "," << point.z() << ",";
+    stream.next(kPointCloudComponentFourMagic);
+  }*/
+
+  std::cout << "avg:"<<depth/msg.data.size() << " max:" << max << " min:" << min  ;
+  std::cout <<"]"<< std::endl;
   return msg;
 }
 

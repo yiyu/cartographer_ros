@@ -195,6 +195,8 @@ void Node::PublishTrajectoryStates(const ::ros::WallTimerEvent& timer_event) {
     const Rigid3d tracking_to_local = extrapolator.ExtrapolatePose(now);
     const Rigid3d tracking_to_map =
         trajectory_state.local_to_map * tracking_to_local;
+//    std::cout << "PublishTrajectoryStates: tracking_to_local:" << tracking_to_local << " tracking_to_map:" << tracking_to_map
+  //            << "" << std::endl;
 
     if (trajectory_state.published_to_tracking != nullptr) {
       if (trajectory_state.trajectory_options.provide_odom_frame) {
